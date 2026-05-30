@@ -3,14 +3,53 @@
 ## Scheduler approach
 The scheduler builds a CP-SAT model with optional charging intervals for each bus at each station. It enforces non-overlap at each station, range feasibility between charging points, and minimizes a weighted objective (individual wait, operator fairness, overall makespan). A time limit returns the best feasible schedule if optimality is not proven.
 
+**Why CP-SAT fits this problem:** the schedule has hard constraints (battery range, one charger per station) and soft tradeoffs (wait time vs fairness vs makespan). CP-SAT handles discrete decisions (which stations to stop at) and time window constraints cleanly, and can prove optimality for a small-to-midsize fleet while still returning a best-found solution under a time limit.
+
 ## Data model
 Scenario JSON files encode the route segments, station list, weights, and bus schedule rows. These files are the authoritative input and drive both the solver and UI.
 
+```json
+{
+  "scenario_id": "scenario_1",
+  "weights": { "individual": 1.0, "operator": 1.0, "overall": 1.0 },
+  "route": [
+    { "from": "Bengaluru", "to": "A", "distance_km": 100 },
+    { "from": "A", "to": "B", "distance_km": 120 }
+  ],
+  "stations": ["A", "B", "C", "D"],
+  "buses": [
+    { "bus_id": "bus-BK-01", "operator": "kpn", "direction": "Bengaluru->Kochi", "depart_time": "19:00" }
+  ]
+}
+```
+
+Route segments define cumulative distances, `stations` defines charging stops, and `buses` define the demand signal. The solver and UI both read directly from this structure.
+
 ## Future changes
-- **New constraint:** add a new decision variable and constraint in `scheduler/solver.py`.
-- **New weight:** extend the JSON `weights` object, add a UI slider, and include the term in the objective.
+- **Different route distances or more segments:** update the `route` list in a scenario JSON; travel times recompute from data.
+- **More/less charging stations:** update the `stations` list; the solver reads the stations from data.
+- **New operators or more buses:** add rows in `buses`; the solver groups by `operator` dynamically.
+- **Different departure schedules:** change `depart_time` values in `buses`.
+- **Different weight tuning:** edit `weights` in scenario JSON or adjust via UI sliders.
+- **New scenario variations:** add another JSON file in `data/scenarios/` with the same schema.
 
 ## Assumptions
 - 60 km/h travel speed.
 - 25-minute full charge.
 - One charger per station, no backtracking.
+
+## Code examples
+
+### Change a weight
+```json
+{
+  "weights": { "individual": 1.0, "operator": 2.0, "overall": 1.0 }
+}
+```
+
+### Add a new rule (example: cap wait time to 30 minutes)
+```python
+# scheduler/solver.py (inside the station loop)
+max_wait = 30
+model.Add(wait <= max_wait).OnlyEnforceIf(stop)
+```
