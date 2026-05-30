@@ -51,7 +51,7 @@ def solve_schedule(
     time_limit_sec: int = 5,
 ) -> Solution:
     model = cp_model.CpModel()
-    horizon = 24 * 60
+    horizon = 72 * 60
     positions = station_positions(scenario.route)
 
     station_intervals: Dict[str, List[cp_model.IntervalVar]] = {
