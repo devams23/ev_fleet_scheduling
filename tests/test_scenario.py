@@ -63,6 +63,17 @@ class ScenarioTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             load_scenario(path)
 
+    def test_all_scenarios_load(self):
+        for name in [
+            "data/scenarios/scenario_1.json",
+            "data/scenarios/scenario_2.json",
+            "data/scenarios/scenario_3.json",
+            "data/scenarios/scenario_4.json",
+            "data/scenarios/scenario_5.json",
+        ]:
+            scenario = load_scenario(name)
+            self.assertGreaterEqual(len(scenario.buses), 4)
+
 
 if __name__ == "__main__":
     unittest.main()
