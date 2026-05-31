@@ -8,18 +8,30 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
-## Change a weight
-- Use the sliders in the UI, or edit the `weights` section of a scenario JSON in `data/scenarios/`:
+## Scenario files are the single source of truth
+All scheduler inputs live in `data/scenarios/scenario_*.json` and are read by both the UI and solver:
+- `weights`: objective tuning (`individual`, `operator`, `overall`)
+- `parameters`: runtime rules (`speed_kmph`, `battery_range_km`, `charge_minutes`, `chargers_per_station`)
+- `route`, `stations`, and `buses` (with `origin`/`destination`)
+
+If you need to change behavior, change scenario JSON first.
+
+## Change weights or scenario parameters
+Edit a scenario file directly, for example:
 ```json
 {
-  "weights": { "individual": 1.0, "operator": 2.0, "overall": 1.0 }
+  "weights": { "individual": 1.0, "operator": 2.0, "overall": 1.0 },
+  "parameters": {
+    "speed_kmph": 60,
+    "battery_range_km": 240,
+    "charge_minutes": 25,
+    "chargers_per_station": 1
+  }
 }
 ```
 
+You can also use UI sliders for temporary weight experiments, but committed behavior should be captured in scenario files.
+
 ## Add a new rule
-- Update the CP-SAT constraints in `scheduler/solver.py` (e.g., add a new variable and constraint). Example: cap wait time to 30 minutes per station.
-```python
-max_wait = 30
-model.Add(wait <= max_wait).OnlyEnforceIf(stop)
-```
-- If the rule should be tunable, add a new weight to the scenario JSON and the UI sliders.
+- Add/adjust the rule in `scheduler/solver.py`.
+- If it should be tunable per scenario, add the field under `parameters` or `weights` in scenario JSON and wire it through the model/UI.

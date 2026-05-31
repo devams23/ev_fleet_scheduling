@@ -28,7 +28,8 @@ st.table(
         {
             "bus_id": bus.bus_id,
             "operator": bus.operator,
-            "direction": bus.direction,
+            "origin": bus.origin,
+            "destination": bus.destination,
             "depart_time": bus.depart_time,
         }
         for bus in scenario.buses
