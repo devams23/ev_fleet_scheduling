@@ -51,15 +51,24 @@ def solve_schedule(
     weights: Weights,
     time_limit_sec: int = 5,
 ) -> Solution:
+    speed_kmph = scenario.parameters.speed_kmph
+    battery_range_km = scenario.parameters.battery_range_km
+    charge_minutes = scenario.parameters.charge_minutes
+    chargers_per_station = scenario.parameters.chargers_per_station
+    if speed_kmph <= 0:
+        raise ValueError("speed_kmph must be > 0")
+    if battery_range_km <= 0:
+        raise ValueError("battery_range_km must be > 0")
+    if charge_minutes <= 0:
+        raise ValueError("charge_minutes must be > 0")
+    if chargers_per_station <= 0:
+        raise ValueError("chargers_per_station must be > 0")
+
     model = cp_model.CpModel()
     horizon = 72 * 60
     positions = station_positions(scenario.route)
     route_start = scenario.route[0].start
     route_end = scenario.route[-1].end
-    speed_kmph = scenario.parameters.speed_kmph
-    battery_range_km = scenario.parameters.battery_range_km
-    charge_minutes = scenario.parameters.charge_minutes
-    chargers_per_station = scenario.parameters.chargers_per_station
 
     station_intervals: Dict[str, List[cp_model.IntervalVar]] = {
         station: [] for station in scenario.stations
