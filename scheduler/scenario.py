@@ -36,6 +36,10 @@ class Bus:
     depart_time: str
     depart_minute: int
 
+    @property
+    def direction(self) -> str:
+        return f"{self.origin}->{self.destination}"
+
 
 @dataclass(frozen=True)
 class Scenario:
