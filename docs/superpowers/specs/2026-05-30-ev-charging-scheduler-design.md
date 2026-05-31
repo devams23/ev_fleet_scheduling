@@ -19,11 +19,11 @@
 - Range constraint: must never exceed 240 km between charges (including endpoints).
 
 ## Architecture
-1. **Scenario loader/validator**: reads JSON, validates schema, normalizes times.
+1. **Scenario loader/validator**: reads JSON, validates schema, checks route/station alignment, validates HH:MM times, normalizes times.
 2. **Time model**: converts segment distances into travel minutes.
 3. **CP-SAT builder**: constructs variables, constraints, and objective.
 4. **Solver runner**: executes CP-SAT with time limit, returns best solution.
-5. **Solution formatter**: builds per-bus timelines and per-station order.
+5. **Solution formatter**: builds per-bus timelines and per-station order, formats times as HH:MM (24-hour).
 6. **Streamlit UI**: scenario picker, weight sliders, run button, tables.
 
 ## Scenario data model (JSON)
@@ -40,17 +40,21 @@
   ],
   "stations": ["A", "B", "C", "D"],
   "buses": [
-    { "bus_id": "B1", "operator": "KPN", "direction": "Bengaluru->Kochi", "depart_time": "09:00" }
+    { "bus_id": "B1", "operator": "KPN", "origin": "Bengaluru", "destination": "Kochi", "depart_time": "09:00" }
   ]
 }
 ```
+Notes:
+- Bus direction is derived from `origin` and `destination`. These must be the route endpoints.
+- `stations` must match the intermediate route nodes (A–D in this route) and only those are chargeable.
+- `depart_time` is 24-hour HH:MM. Operator labels are case-sensitive and preserved in outputs.
 
 ## CP-SAT model
 **Indices**
-- For each bus, derive ordered station sequence based on direction.
+- For each bus, derive ordered station sequence based on origin/destination (forward or reverse along the route).
 
 **Decision variables**
-- `stop[b,s]` ∈ {0,1} for each bus and station along its direction.
+- `stop[b,s]` ∈ {0,1} for each bus and station along its path.
 - `arrival[b,s]`, `start_charge[b,s]`, `end_charge[b,s]` (minutes).
 - `wait[b,s]` (minutes) where `wait = start_charge - arrival`.
 
@@ -72,11 +76,11 @@ Solver runs with a time limit; if not optimal, the best feasible solution is ret
 ## UI and outputs
 - **Inputs**: scenario picker, editable weight sliders, “Run schedule” button, input table.
 - **Outputs**:
-  - Per-bus timeline table: segment type (travel/wait/charge), start, end, station (if applicable).
-  - Per-station charging order: ordered list of bus_id with start/end times and operator.
+  - Per-bus timeline table: segment type (travel/wait/charge), start/end (HH:MM 24-hour), station (if applicable).
+  - Per-station charging order: ordered list of bus_id with start/end (HH:MM 24-hour) and operator.
 
 ## Error handling
-- Invalid scenario schema or impossible reachability → Streamlit error and no solve.
+- Invalid scenario schema, bad HH:MM time, route/station mismatch, or impossible reachability → Streamlit error and no solve.
 - Solver infeasible → show infeasible status and diagnostics (if available).
 - Solver time limit → show best-found status and objective value.
 
