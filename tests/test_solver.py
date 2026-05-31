@@ -12,7 +12,7 @@ class SolverTests(unittest.TestCase):
             parameters=Parameters(
                 speed_kmph=60,
                 battery_range_km=240,
-                charge_minutes=25,
+                charge_minutes=30,
                 chargers_per_station=1,
             ),
             route=[
@@ -39,6 +39,11 @@ class SolverTests(unittest.TestCase):
 
         self.assertIn(solution.status, {"OPTIMAL", "FEASIBLE"})
         self.assertGreaterEqual(len(solution.station_events), 1)
+        for station_event in solution.station_events:
+            self.assertEqual(
+                station_event.end_minute - station_event.start_minute,
+                scenario.parameters.charge_minutes,
+            )
 
 
 if __name__ == "__main__":
