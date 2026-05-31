@@ -11,12 +11,12 @@
 - Real-time traffic, dynamic pricing, or battery degradation modeling.
 - Multi-process or multi-service architecture.
 
-## Assumptions
-- Travel speed: 60 km/h.
-- Charging: always to full, fixed 25 minutes.
-- Stations: A–D only, one charger per station.
+## Assumptions (single source of truth in scenario parameters)
+- `speed_kmph`: travel speed (e.g., 60).
+- `charge_minutes`: charge duration to full (e.g., 25).
+- `chargers_per_station`: chargers per station (e.g., 1).
+- `battery_range_km`: max distance between charges (e.g., 240).
 - Buses may wait in a queue; no backtracking.
-- Range constraint: must never exceed 240 km between charges (including endpoints).
 
 ## Architecture
 1. **Scenario loader/validator**: reads JSON, validates schema, checks route/station alignment, validates HH:MM times, normalizes times.
@@ -31,6 +31,7 @@
 {
   "scenario_id": "scenario_1",
   "weights": { "individual": 1.0, "operator": 1.0, "overall": 1.0 },
+  "parameters": { "speed_kmph": 60, "battery_range_km": 240, "charge_minutes": 25, "chargers_per_station": 1 },
   "route": [
     { "from": "Bengaluru", "to": "A", "distance_km": 100 },
     { "from": "A", "to": "B", "distance_km": 120 },
@@ -48,6 +49,7 @@ Notes:
 - Bus direction is derived from `origin` and `destination`. These must be the route endpoints.
 - `stations` must match the intermediate route nodes (A–D in this route) and only those are chargeable.
 - `depart_time` is 24-hour HH:MM. Operator labels are case-sensitive and preserved in outputs.
+- Scenario `parameters` are the single source of truth for shared constants; no hardcoded values in code.
 
 ## CP-SAT model
 **Indices**
@@ -59,9 +61,9 @@ Notes:
 - `wait[b,s]` (minutes) where `wait = start_charge - arrival`.
 
 **Constraints**
-- **Range**: distance between consecutive charges (or endpoint) ≤ 240 km.
+- **Range**: distance between consecutive charges (or endpoint) ≤ `battery_range_km`.
 - **Timing**: `arrival` = departure + travel + previous charge + previous wait (big‑M when `stop=0`).
-- **Charge time**: `end_charge = start_charge + 25` when `stop=1`.
+- **Charge time**: `end_charge = start_charge + charge_minutes` when `stop=1`.
 - **Non-overlap**: for each station, charging intervals do not overlap (single charger).
 - **Queueing**: `wait ≥ 0` and only applies when `stop=1`.
 
@@ -80,7 +82,7 @@ Solver runs with a time limit; if not optimal, the best feasible solution is ret
   - Per-station charging order: ordered list of bus_id with start/end (HH:MM 24-hour) and operator.
 
 ## Error handling
-- Invalid scenario schema, bad HH:MM time, route/station mismatch, or impossible reachability → Streamlit error and no solve.
+- Invalid scenario schema, missing parameters, bad HH:MM time, route/station mismatch, or impossible reachability → Streamlit error and no solve.
 - Solver infeasible → show infeasible status and diagnostics (if available).
 - Solver time limit → show best-found status and objective value.
 
