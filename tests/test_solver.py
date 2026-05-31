@@ -1,6 +1,6 @@
 import unittest
 
-from scheduler.scenario import Scenario, Weights, RouteSegment, Bus
+from scheduler.scenario import Scenario, Weights, Parameters, RouteSegment, Bus
 from scheduler.solver import solve_schedule
 
 
@@ -9,6 +9,12 @@ class SolverTests(unittest.TestCase):
         scenario = Scenario(
             scenario_id="test",
             weights=Weights(1.0, 1.0, 1.0),
+            parameters=Parameters(
+                speed_kmph=60,
+                battery_range_km=240,
+                charge_minutes=25,
+                chargers_per_station=1,
+            ),
             route=[
                 RouteSegment("Bengaluru", "A", 100),
                 RouteSegment("A", "B", 120),
@@ -21,7 +27,8 @@ class SolverTests(unittest.TestCase):
                 Bus(
                     bus_id="bus-1",
                     operator="kpn",
-                    direction="Bengaluru->Kochi",
+                    origin="Bengaluru",
+                    destination="Kochi",
                     depart_time="19:00",
                     depart_minute=19 * 60,
                 )

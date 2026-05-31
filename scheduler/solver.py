@@ -1,5 +1,5 @@
 from itertools import product
-from typing import Dict, List, Tuple
+from typing import Dict, List
 
 from ortools.sat.python import cp_model
 
@@ -8,16 +8,18 @@ from .time_model import station_positions, travel_minutes_between
 from .solution import Solution, TimelineEvent, StationCharge
 
 
-def _ordered_stations(stations: List[str], direction: str) -> List[str]:
-    if direction.startswith("Bengaluru"):
+def _ordered_stations(
+    stations: List[str],
+    route_start: str,
+    route_end: str,
+    origin: str,
+    destination: str,
+) -> List[str]:
+    if origin == route_start and destination == route_end:
         return stations
-    return list(reversed(stations))
-
-
-def _origin_destination(direction: str) -> Tuple[str, str]:
-    if direction.startswith("Bengaluru"):
-        return "Bengaluru", "Kochi"
-    return "Kochi", "Bengaluru"
+    if origin == route_end and destination == route_start:
+        return list(reversed(stations))
+    raise ValueError("Bus origin/destination must match route endpoints")
 
 
 def _feasible_patterns(
@@ -52,6 +54,12 @@ def solve_schedule(
     model = cp_model.CpModel()
     horizon = 72 * 60
     positions = station_positions(scenario.route)
+    route_start = scenario.route[0].start
+    route_end = scenario.route[-1].end
+    speed_kmph = scenario.parameters.speed_kmph
+    battery_range_km = scenario.parameters.battery_range_km
+    charge_minutes = scenario.parameters.charge_minutes
+    chargers_per_station = scenario.parameters.chargers_per_station
 
     station_intervals: Dict[str, List[cp_model.IntervalVar]] = {
         station: [] for station in scenario.stations
@@ -63,15 +71,17 @@ def solve_schedule(
     bus_vars: Dict[str, Dict[str, Dict[str, cp_model.IntVar]]] = {}
 
     for bus in scenario.buses:
-        ordered = _ordered_stations(scenario.stations, bus.direction)
-        origin, destination = _origin_destination(bus.direction)
+        ordered = _ordered_stations(
+            scenario.stations, route_start, route_end, bus.origin, bus.destination
+        )
+        origin, destination = bus.origin, bus.destination
 
         patterns = _feasible_patterns(
             ordered,
             positions,
             origin,
             destination,
-            max_range_km=240,
+            max_range_km=battery_range_km,
         )
         pattern_vars = [
             model.NewBoolVar(f"pattern_{bus.bus_id}_{i}")
@@ -109,14 +119,14 @@ def solve_schedule(
 
             model.Add(start >= arrival).OnlyEnforceIf(stop)
             model.Add(start == arrival).OnlyEnforceIf(stop.Not())
-            model.Add(end == start + 25).OnlyEnforceIf(stop)
+            model.Add(end == start + charge_minutes).OnlyEnforceIf(stop)
             model.Add(end == start).OnlyEnforceIf(stop.Not())
             model.Add(wait == start - arrival)
             model.Add(depart == end).OnlyEnforceIf(stop)
             model.Add(depart == arrival).OnlyEnforceIf(stop.Not())
 
             interval = model.NewOptionalIntervalVar(
-                start, 25, end, stop, f"interval_{bus.bus_id}_{station}"
+                start, charge_minutes, end, stop, f"interval_{bus.bus_id}_{station}"
             )
             station_intervals[station].append(interval)
 
@@ -134,19 +144,19 @@ def solve_schedule(
         for idx, station in enumerate(ordered):
             if idx == 0:
                 travel_minutes = travel_minutes_between(
-                    positions, origin, station, 60
+                    positions, origin, station, speed_kmph
                 )
                 model.Add(arrival_vars[idx] == bus.depart_minute + travel_minutes)
             else:
                 prev_station = ordered[idx - 1]
                 travel_minutes = travel_minutes_between(
-                    positions, prev_station, station, 60
+                    positions, prev_station, station, speed_kmph
                 )
                 model.Add(arrival_vars[idx] == depart_vars[idx - 1] + travel_minutes)
 
         dest_arrival = model.NewIntVar(0, horizon, f"arrive_{bus.bus_id}_dest")
         travel_to_dest = travel_minutes_between(
-            positions, ordered[-1], destination, 60
+            positions, ordered[-1], destination, speed_kmph
         )
         model.Add(dest_arrival == depart_vars[-1] + travel_to_dest)
         destination_arrivals.append(dest_arrival)
@@ -156,7 +166,10 @@ def solve_schedule(
         bus_wait_totals.append(total_wait)
 
     for station, intervals in station_intervals.items():
-        model.AddNoOverlap(intervals)
+        if chargers_per_station <= 1:
+            model.AddNoOverlap(intervals)
+        else:
+            model.AddCumulative(intervals, [1] * len(intervals), chargers_per_station)
 
     operator_waits: Dict[str, cp_model.IntVar] = {}
     for operator in sorted({bus.operator for bus in scenario.buses}):
@@ -199,8 +212,10 @@ def solve_schedule(
         return Solution(status=status_name, bus_events=[], station_events=[], objective={})
 
     for bus in scenario.buses:
-        ordered = _ordered_stations(scenario.stations, bus.direction)
-        origin, destination = _origin_destination(bus.direction)
+        ordered = _ordered_stations(
+            scenario.stations, route_start, route_end, bus.origin, bus.destination
+        )
+        origin, destination = bus.origin, bus.destination
 
         prev_time = bus.depart_minute
         prev_location = origin
@@ -260,7 +275,7 @@ def solve_schedule(
                 prev_location = station
 
         dest_arrival = prev_time + travel_minutes_between(
-            positions, prev_location, destination, 60
+            positions, prev_location, destination, speed_kmph
         )
         all_bus_events.append(
             TimelineEvent(
