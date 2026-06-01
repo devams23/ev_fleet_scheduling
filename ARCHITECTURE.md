@@ -162,6 +162,10 @@ These are the kinds of changes the schema was designed to absorb without code ch
 | More or fewer charging stations | Edit `stations`; validation keeps stations aligned with the route interior |
 | Different charger capacity | Change `chargers_per_station`; the solver switches between `AddNoOverlap` and `AddCumulative` |
 | Different driving or charging assumptions | Change `speed_kmph`, `battery_range_km`, or `charge_minutes` in `parameters` |
+| Priority buses | Add a bus attribute and weight it in the objective or add a hard ordering constraint |
+| Time-of-day electricity cost | Add a time-dependent cost field and include it in the objective per charge interval |
+| Driver shifts | Add shift windows to bus or operator data and constrain the relevant intervals |
+| Multiple routes sharing stations | Add a route identifier and group station capacity by shared station key instead of route name |
 
 The important idea is that common operational changes stay in data. That lets the same code support all five scenarios and future scenario variants without branching the solver by scenario ID.
 

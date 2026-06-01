@@ -1,6 +1,6 @@
 import unittest
 
-from scheduler.solution import Solution, TimelineEvent, StationCharge
+from scheduler.solution_model import Solution, TimelineEvent, StationCharge
 from scheduler.formatting import (
     format_minutes_hhmm,
     station_order_rows,

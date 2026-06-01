@@ -1,6 +1,6 @@
 from typing import Dict, List
 
-from .solution import Solution
+from .solution_model import Solution
 
 
 def format_minutes_hhmm(total_minutes: int) -> str:

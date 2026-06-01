@@ -5,7 +5,7 @@ from ortools.sat.python import cp_model
 
 from .scenario import Scenario, Weights
 from .time_model import station_positions, travel_minutes_between
-from .solution import Solution, TimelineEvent, StationCharge
+from .solution_model import Solution, TimelineEvent, StationCharge
 
 
 def _ordered_stations(

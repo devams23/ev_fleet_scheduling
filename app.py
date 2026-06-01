@@ -23,6 +23,46 @@ scenario_path = SCENARIO_DIR / f"{scenario_name}.json"
 scenario = load_scenario(scenario_path)
 
 st.subheader("Scenario input")
+
+st.write("Weights")
+st.table(
+    [
+        {
+            "individual": scenario.weights.individual,
+            "operator": scenario.weights.operator,
+            "overall": scenario.weights.overall,
+        }
+    ]
+)
+
+st.write("Parameters")
+st.table(
+    [
+        {
+            "speed_kmph": scenario.parameters.speed_kmph,
+            "battery_range_km": scenario.parameters.battery_range_km,
+            "charge_minutes": scenario.parameters.charge_minutes,
+            "chargers_per_station": scenario.parameters.chargers_per_station,
+        }
+    ]
+)
+
+st.write("Route")
+st.table(
+    [
+        {
+            "from": segment.start,
+            "to": segment.end,
+            "distance_km": segment.distance_km,
+        }
+        for segment in scenario.route
+    ]
+)
+
+st.write("Stations")
+st.table([{"station": station} for station in scenario.stations])
+
+st.write("Buses")
 st.table(
     [
         {
