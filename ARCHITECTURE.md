@@ -8,7 +8,7 @@ The design is intentionally data-driven:
 - `data/scenarios/scenario_*.json` defines the route, stations, buses, parameters, and weights.
 - `scheduler/scenario.py` validates and loads that data into typed dataclasses.
 - `scheduler/solver.py` turns the data into a CP-SAT optimization model.
-- `scheduler/solution.py` holds the solver output.
+- `scheduler/solution_model.py` holds the solver output.
 - `scheduler/formatting.py` converts the output into table rows for Streamlit.
 - `app.py` wires the scenario selector, weight sliders, solver, and tables together.
 
