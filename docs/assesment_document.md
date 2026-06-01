@@ -300,6 +300,7 @@ modeling decisions — we want to see how you handle ambiguity. If you assume so
 we wouldn't have, you can defend it in the interview.
 (The only thing worth emailing about is genuine technical blockers — hosting issues, broken
 access, etc.)
+
 Deliverables
 1. Hosted link
 Working web app with all 5 scenarios in the dropdown.
